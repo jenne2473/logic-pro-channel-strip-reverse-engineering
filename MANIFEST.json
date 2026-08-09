@@ -1,0 +1,16 @@
+{
+  "release": "0.2.0",
+  "files": [
+    "README.md",
+    "logic-plugin-mappings.json",
+    "dbx160_cst_editor.py",
+    "reference/UADx_dbx160_reference.cst"
+  ],
+  "reference_cst_known_state": {
+    "threshold": 0.5,
+    "compression": 0.5,
+    "output_gain": 0.5,
+    "mix": 1.0
+  },
+  "reference_cst_size_bytes": 5595
+}
