@@ -1,56 +1,34 @@
 # Logic Pro Channel Strip Reverse Engineering
 
-Version **0.2.0**  
-Status: **Experimental, empirically validated for UADx dbx 160**
+Version **0.3.0**  
+Status: **Experimental; empirically validated for UADx dbx 160 and UADx LA-3A**
 
-This repository documents a practical method for modifying Logic Pro `.cst`
-Channel Strip Setting files programmatically.
+This repository documents a practical method for programmatically modifying
+Logic Pro `.cst` Channel Strip Settings.
 
-## Key finding
+## Current architecture
 
-A Logic Pro CST can contain the full plugin state, not just the plugin identity.
-For the tested **UADx dbx 160**, the plugin state is stored in a Base64 encoded
-`jucePluginState`.
+The validated workflow is:
 
-After decoding, relevant parameters can be edited as little-endian 32-bit
-floating-point values.
+**compatible reference CST + known plugin-state mapping → modified CST**
 
-A generated CST with several dbx parameters changed simultaneously was
-successfully loaded by Logic Pro and displayed correctly in the UADx dbx 160 UI.
+The project does not yet claim arbitrary CST generation completely from scratch.
+Minimal reference CST files are therefore part of the reverse-engineering data.
 
-## Important architectural point
+## Common UADx state pattern observed
 
-At the current stage this project supports:
+Both mapped UADx plugins use a Base64-encoded `jucePluginState`. In the tested
+states, mapped values are little-endian `float32`, repeated **32 times** with a
+**68-byte stride**.
 
-**compatible CST template + known parameter mapping -> modified CST**
+This is an empirical observation, not a guaranteed Universal Audio file-format
+contract.
 
-It does **not** yet claim to create an arbitrary Logic Pro CST completely from
-scratch.
+## Mapped plugins
 
-A valid reference/template CST is therefore part of the documented knowledge.
-The repository includes one canonical minimal dbx-only reference file:
+### UADx dbx 160
 
-`reference/UADx_dbx160_reference.cst`
-
-Known values in that reference:
-
-- Threshold normalized: `0.50`
-- Compression normalized: `0.50`
-- Compression visible value: `4`
-- Output Gain: `0 dB`
-- Mix: `100 %`
-
-This template can be copied and modified by the supplied script.
-
-## UADx dbx 160 state layout
-
-Inside the decoded `jucePluginState`:
-
-- value type: `float32`, little-endian
-- parameter block repetitions: **32**
-- block stride: **68 bytes**
-
-Offsets used in the tested reference state:
+Offsets:
 
 | Parameter | Offset |
 |---|---:|
@@ -59,135 +37,92 @@ Offsets used in the tested reference state:
 | Output Gain | 217 |
 | Mix | 229 |
 
-These offsets are empirical and may depend on plugin version/state format.
-They should be validated again after relevant Logic Pro or UADx updates.
+Output Gain mapping:
 
-## Parameter mappings
+`dB = 40*x - 20`
 
-### Threshold
+Mix mapping:
 
-Normalized parameter range: `0.0 .. 1.0`
+`percent = 100*x`
 
-Observed:
+Compression uses a non-linear visible scale. Confirmed examples include visible
+1 → 0.0 and visible 4 → 0.5.
 
-- minimum -> `0.0`
-- middle -> `0.5`
-- maximum -> `1.0`
+A multi-parameter generated CST was successfully loaded and verified in Logic Pro.
 
-This corresponds to knob position. The visible threshold markings themselves
-are not a linear physical scale.
+### UADx LA-3A
 
-### Compression
+Observed decoded plugin-state size: **2614 bytes**.
 
-Normalized internal range: `0.0 .. 1.0`
+| Parameter | Offset | Mapping / values |
+|---|---:|---|
+| Peak Reduction | 209 | visible 0/5/10 → 0/0.5/1 |
+| Gain | 213 | visible 0 ≈ 0.00997925; 5 ≈ 0.49499512; 10 = 1 |
+| COMP/LIM | 217 | COMP=0; LIM=1 |
+| Meter | 221 | OFF=0; GR=0.5; OUTPUT=1 |
+| HF | 225 | normalized 0..1 |
+| Mix | 229 | normalized 0..1 |
 
-Observed:
+The slight deviations around manually selected midpoint values appear to be
+control/mouse quantization and are preserved as empirical observations rather
+than forced into an assumed exact formula.
 
-- visible `1` -> `0.0`
-- visible `4` -> `0.5`
-- maximum -> `1.0`
-- approx. visible `3` -> `0.359985`
-- approx. visible `6` -> `0.669983`
+#### LA-3A validation
 
-The visible Compression scale is therefore non-linear relative to the internal
-normalized parameter.
+A generated CST simultaneously set:
 
-### Output Gain
+- Peak Reduction normalized `0.70`
+- Gain normalized `0.30`
+- Mode `LIM`
+- Meter `OUTPUT`
+- HF normalized `0.25`
+- Mix normalized `0.75`
 
-Normalized range: `0.0 .. 1.0`  
-Visible range: `-20 dB .. +20 dB`
+The file loaded successfully in Logic Pro and the user confirmed that all six
+controls appeared correctly. This establishes the LA-3A as the second validated
+automatable plugin in the project.
 
-Formula:
+## Reference CSTs
 
-```text
-dB = 40*x - 20
-x  = (dB + 20) / 40
-```
+`reference/UADx_dbx160_reference.cst`
 
-Examples:
+Canonical dbx-only template with documented normalized values.
 
-- `0.00` -> `-20 dB`
-- `0.50` -> `0 dB`
-- `0.75` -> `+10 dB`
-- `1.00` -> `+20 dB`
+`reference/UADx_LA-3A_reference.cst`
 
-### Mix
+Canonical LA-3A-only template. Defined state:
 
-Normalized range: `0.0 .. 1.0`  
-Visible range: `0 .. 100 %`
+- Peak Reduction = 0.5 (visible 5)
+- Gain = 0.494995117 (empirically visible 5)
+- Mode = COMP
+- Meter = GR
+- HF = 0.5
+- Mix = 1.0
 
-Formula:
+## Machine-readable data
 
-```text
-percent = 100*x
-x = percent / 100
-```
+`logic-plugin-mappings.json` is the authoritative machine-readable mapping
+database. Future plugins should be added there together with a minimal reference
+CST and a successful Logic validation test.
 
-Observed:
+## Editor
 
-- minimum -> `0.0`
-- visually near middle in one manual test -> `0.47998046875`
-- maximum -> `1.0`
+`cst_editor.py` is a small generic proof-of-concept editor for the mapped
+normalized parameters.
 
-## Validation test
-
-A CST was generated with these four values changed simultaneously:
-
-```text
-Threshold   = 0.50
-Compression = 0.50
-Output Gain = 0.75  (+10 dB)
-Mix         = 0.25  (25 %)
-```
-
-Logic Pro loaded the generated file successfully and the UADx dbx 160 showed
-the expected settings.
-
-This validates the basic editing workflow:
-
-1. Start with a compatible CST template.
-2. Locate the Base64 encoded `jucePluginState`.
-3. Decode it.
-4. Change each mapped `float32` value in all 32 repeated blocks.
-5. Encode the state again.
-6. Write it back to the CST without altering unrelated structure.
-7. Load the CST in Logic Pro and verify the result.
-
-## Included files
-
-- `README.md`  
-  Human-readable documentation.
-
-- `logic-plugin-mappings.json`  
-  Machine-readable mapping database.
-
-- `dbx160_cst_editor.py`  
-  Example Python editor for the tested dbx 160 state layout.
-
-- `reference/UADx_dbx160_reference.cst`  
-  Canonical minimal CST template containing only the UADx dbx 160.
-
-## Example
+Example:
 
 ```bash
-python dbx160_cst_editor.py   reference/UADx_dbx160_reference.cst   My_dbx_Setting.cst   --threshold 0.5   --compression 0.5   --output-db 10   --mix-percent 25
+python cst_editor.py la3a   reference/UADx_LA-3A_reference.cst   LA3A_Test.cst   --set peak_reduction=0.7   --set gain=0.3   --set comp_lim=1   --set meter=1   --set hf=0.25   --set mix=0.75
 ```
 
-## Recommended future repository structure
+## Compatibility warning
 
-As more plugins are reverse-engineered, each plugin should ideally have:
+All offsets and layouts are reverse-engineered and empirical. Logic Pro or
+plugin updates may change serialization. Keep original CSTs and revalidate
+generated files after relevant software updates.
 
-1. a machine-readable parameter mapping,
-2. at least one minimal validated reference CST,
-3. documented known parameter values for that reference,
-4. a successful Logic Pro validation test,
-5. version/compatibility notes.
+## Next targets
 
-Planned mapping targets include UADx LA-3A, Manley Tube Preamp, UADx Neve 1073,
-UADx Pultec and Aguilar Amp/Cab.
-
-## Scope and caution
-
-This is reverse-engineered experimental work. Logic Pro or plugin updates may
-change serialization details. Always keep an original CST and verify generated
-files in Logic Pro before relying on them in production projects.
+Planned mapping work includes Manley Tube Preamp, UADx Neve 1073, UADx Pultec
+and Aguilar Amp/Cab.

@@ -1,22 +1,25 @@
 {
   "project": {
     "name": "Logic Pro Channel Strip Reverse Engineering",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "status": "experimental",
-    "purpose": "Document and automate parameter editing in Logic Pro .cst Channel Strip Setting files.",
-    "workflow": "Use a compatible reference/template CST and modify embedded plugin state; do not assume complete CST generation from scratch is supported.",
-    "compatibility_warning": "Offsets and state layout are empirical and may change with Logic Pro, plugin, or plugin-version updates."
+    "workflow": "compatible reference CST + empirically validated parameter mapping -> modified CST",
+    "compatibility_warning": "Offsets/state layouts may change with Logic Pro or plugin updates."
+  },
+  "common_uadx_observation": {
+    "state_container": "jucePluginState",
+    "encoding": "base64",
+    "decoded_value_type": "float32_le",
+    "tested_repetition_count": 32,
+    "tested_stride_bytes": 68
   },
   "plugins": {
     "uadx_dbx_160": {
       "display_name": "UADx dbx 160",
       "manufacturer": "Universal Audio",
-      "state_container": "jucePluginState",
-      "state_encoding": "base64",
-      "decoded_value_type": "float32_le",
       "repetition_count": 32,
       "stride_bytes": 68,
-      "template_offsets": {
+      "offsets": {
         "threshold": 209,
         "compression": 213,
         "output_gain": 217,
@@ -25,84 +28,156 @@
       "parameters": {
         "threshold": {
           "normalized_range": [
-            0.0,
-            1.0
+            0,
+            1
           ],
-          "mapping": "normalized knob position",
           "observations": {
-            "minimum": 0.0,
+            "min": 0,
             "middle": 0.5,
-            "maximum": 1.0
+            "max": 1
           }
         },
         "compression": {
           "normalized_range": [
-            0.0,
-            1.0
+            0,
+            1
           ],
-          "mapping": "normalized internal parameter; visible scale is non-linear",
+          "visible_scale": "non-linear",
           "observations": {
             "visible_1": 0.0,
             "visible_4": 0.5,
-            "maximum": 1.0,
             "approx_visible_3": 0.359985,
-            "approx_visible_6": 0.669983
+            "approx_visible_6": 0.669983,
+            "max": 1.0
           }
         },
         "output_gain": {
           "normalized_range": [
-            0.0,
-            1.0
+            0,
+            1
           ],
           "visible_range_db": [
-            -20.0,
-            20.0
+            -20,
+            20
           ],
           "formula_from_normalized": "dB = 40*x - 20",
-          "formula_to_normalized": "x = (dB + 20) / 40",
+          "formula_to_normalized": "x = (dB + 20) / 40"
+        },
+        "mix": {
+          "normalized_range": [
+            0,
+            1
+          ],
+          "visible_range_percent": [
+            0,
+            100
+          ],
+          "formula_from_normalized": "percent = 100*x",
+          "formula_to_normalized": "x = percent / 100"
+        }
+      },
+      "reference": "reference/UADx_dbx160_reference.cst",
+      "validated": true
+    },
+    "uadx_la3a": {
+      "display_name": "UADx LA-3A",
+      "manufacturer": "Universal Audio",
+      "repetition_count": 32,
+      "stride_bytes": 68,
+      "decoded_state_size_observed": 2614,
+      "offsets": {
+        "peak_reduction": 209,
+        "gain": 213,
+        "comp_lim": 217,
+        "meter": 221,
+        "hf": 225,
+        "mix": 229
+      },
+      "parameters": {
+        "peak_reduction": {
+          "visible_range": [
+            0,
+            10
+          ],
+          "normalized_range": [
+            0,
+            1
+          ],
           "observations": {
-            "-20_dB": 0.0,
-            "0_dB": 0.5,
-            "+20_dB": 1.0
+            "visible_0": 0.0,
+            "visible_5": 0.5,
+            "visible_10": 1.0
+          }
+        },
+        "gain": {
+          "visible_range": [
+            0,
+            10
+          ],
+          "normalized_range": [
+            0,
+            1
+          ],
+          "observations": {
+            "visible_0": 0.00997925,
+            "visible_5": 0.4949951171875,
+            "visible_10": 1.0
+          },
+          "note": "Empirical UAD control quantization observed; do not assume exact visible/10 conversion at all positions."
+        },
+        "comp_lim": {
+          "type": "switch",
+          "values": {
+            "COMP": 0.0,
+            "LIM": 1.0
+          }
+        },
+        "meter": {
+          "type": "three_position_switch",
+          "values": {
+            "OFF": 0.0,
+            "GR": 0.5,
+            "OUTPUT": 1.0
+          }
+        },
+        "hf": {
+          "normalized_range": [
+            0,
+            1
+          ],
+          "observations": {
+            "min": 0.0,
+            "manual_middle": 0.509979248,
+            "max": 1.0
           }
         },
         "mix": {
           "normalized_range": [
-            0.0,
-            1.0
+            0,
+            1
           ],
           "visible_range_percent": [
-            0.0,
-            100.0
+            0,
+            100
           ],
-          "formula_from_normalized": "percent = 100*x",
-          "formula_to_normalized": "x = percent / 100",
           "observations": {
-            "minimum": 0.0,
-            "near_middle_mouse_position": 0.47998046875,
-            "maximum": 1.0
+            "min": 0.0,
+            "manual_middle": 0.494995117,
+            "max": 1.0
           }
         }
       },
+      "reference": "reference/UADx_LA-3A_reference.cst",
       "validated_generated_test": {
-        "threshold": 0.5,
-        "compression": 0.5,
-        "output_gain": 0.75,
-        "output_gain_db": 10.0,
-        "mix": 0.25,
-        "result": "Successfully loaded in Logic Pro; all four controls displayed as expected."
+        "peak_reduction_normalized": 0.7,
+        "gain_normalized": 0.3,
+        "mode": "LIM",
+        "meter": "OUTPUT",
+        "hf_normalized": 0.25,
+        "mix_normalized": 0.75,
+        "result": "Successfully loaded in Logic Pro; user confirmed all controls appeared correctly."
       },
-      "reference_template": {
-        "path": "reference/UADx_dbx160_reference.cst",
-        "known_values": {
-          "threshold_normalized": 0.5,
-          "compression_normalized": 0.5,
-          "compression_visible": 4,
-          "output_gain_db": 0.0,
-          "mix_percent": 100.0
-        },
-        "intended_use": "Canonical minimal dbx-only CST template for future automated edits."
-      }
+      "validated": true
     }
   }
 }
