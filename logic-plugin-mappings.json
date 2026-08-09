@@ -1,0 +1,90 @@
+{
+  "project": {
+    "name": "Logic CST Plugin Mapping",
+    "version": "0.1.0",
+    "description": "Reverse-engineered parameter mappings for Logic Pro .cst Channel Strip Settings.",
+    "status": "experimental",
+    "notes": [
+      "Mappings were derived empirically from Logic Pro Channel Strip Setting files.",
+      "The UADx dbx 160 mapping has been validated by generating a modified CST and loading it successfully in Logic Pro.",
+      "Offsets are relative to the decoded jucePluginState used in the tested dbx 160 template and may change with plugin/version/state-format changes."
+    ]
+  },
+  "plugins": {
+    "uadx_dbx_160": {
+      "display_name": "UADx dbx 160",
+      "manufacturer": "Universal Audio",
+      "state_container": "jucePluginState",
+      "encoding": "base64",
+      "decoded_state": {
+        "value_type": "float32_le",
+        "repetition_count": 32,
+        "stride_bytes": 68,
+        "template_offsets": {
+          "threshold": 209,
+          "compression": 213,
+          "output_gain": 217,
+          "mix": 229
+        }
+      },
+      "parameters": {
+        "threshold": {
+          "normalized_min": 0.0,
+          "normalized_max": 1.0,
+          "mapping": "normalized knob position",
+          "observations": {
+            "minimum": 0.0,
+            "middle": 0.5,
+            "maximum": 1.0
+          }
+        },
+        "compression": {
+          "normalized_min": 0.0,
+          "normalized_max": 1.0,
+          "mapping": "normalized parameter; visible scale is non-linear",
+          "observations": {
+            "visible_1": 0.0,
+            "visible_4": 0.5,
+            "maximum": 1.0,
+            "approx_visible_3": 0.359985,
+            "approx_visible_6": 0.669983
+          }
+        },
+        "output_gain": {
+          "normalized_min": 0.0,
+          "normalized_max": 1.0,
+          "visible_unit": "dB",
+          "visible_min": -20.0,
+          "visible_max": 20.0,
+          "formula_from_normalized": "dB = 40*x - 20",
+          "formula_to_normalized": "x = (dB + 20) / 40",
+          "observations": {
+            "-20_dB": 0.0,
+            "0_dB": 0.5,
+            "+20_dB": 1.0
+          }
+        },
+        "mix": {
+          "normalized_min": 0.0,
+          "normalized_max": 1.0,
+          "visible_unit": "%",
+          "formula_from_normalized": "percent = 100*x",
+          "formula_to_normalized": "x = percent / 100",
+          "observations": {
+            "minimum": 0.0,
+            "near_middle_mouse_position": 0.47998046875,
+            "maximum": 1.0
+          }
+        }
+      },
+      "validated_test": {
+        "threshold": 0.5,
+        "compression": 0.5,
+        "output_gain": 0.75,
+        "output_gain_visible_dB": 10.0,
+        "mix": 0.25,
+        "result": "Successfully loaded in Logic Pro; all four controls appeared at the expected positions."
+      }
+    }
+  }
+}
