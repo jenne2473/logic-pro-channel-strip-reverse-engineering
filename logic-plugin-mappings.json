@@ -1,36 +1,33 @@
 {
   "project": {
-    "name": "Logic CST Plugin Mapping",
-    "version": "0.1.0",
-    "description": "Reverse-engineered parameter mappings for Logic Pro .cst Channel Strip Settings.",
+    "name": "Logic Pro Channel Strip Reverse Engineering",
+    "version": "0.2.0",
     "status": "experimental",
-    "notes": [
-      "Mappings were derived empirically from Logic Pro Channel Strip Setting files.",
-      "The UADx dbx 160 mapping has been validated by generating a modified CST and loading it successfully in Logic Pro.",
-      "Offsets are relative to the decoded jucePluginState used in the tested dbx 160 template and may change with plugin/version/state-format changes."
-    ]
+    "purpose": "Document and automate parameter editing in Logic Pro .cst Channel Strip Setting files.",
+    "workflow": "Use a compatible reference/template CST and modify embedded plugin state; do not assume complete CST generation from scratch is supported.",
+    "compatibility_warning": "Offsets and state layout are empirical and may change with Logic Pro, plugin, or plugin-version updates."
   },
   "plugins": {
     "uadx_dbx_160": {
       "display_name": "UADx dbx 160",
       "manufacturer": "Universal Audio",
       "state_container": "jucePluginState",
-      "encoding": "base64",
-      "decoded_state": {
-        "value_type": "float32_le",
-        "repetition_count": 32,
-        "stride_bytes": 68,
-        "template_offsets": {
-          "threshold": 209,
-          "compression": 213,
-          "output_gain": 217,
-          "mix": 229
-        }
+      "state_encoding": "base64",
+      "decoded_value_type": "float32_le",
+      "repetition_count": 32,
+      "stride_bytes": 68,
+      "template_offsets": {
+        "threshold": 209,
+        "compression": 213,
+        "output_gain": 217,
+        "mix": 229
       },
       "parameters": {
         "threshold": {
-          "normalized_min": 0.0,
-          "normalized_max": 1.0,
+          "normalized_range": [
+            0.0,
+            1.0
+          ],
           "mapping": "normalized knob position",
           "observations": {
             "minimum": 0.0,
@@ -39,9 +36,11 @@
           }
         },
         "compression": {
-          "normalized_min": 0.0,
-          "normalized_max": 1.0,
-          "mapping": "normalized parameter; visible scale is non-linear",
+          "normalized_range": [
+            0.0,
+            1.0
+          ],
+          "mapping": "normalized internal parameter; visible scale is non-linear",
           "observations": {
             "visible_1": 0.0,
             "visible_4": 0.5,
@@ -51,11 +50,14 @@
           }
         },
         "output_gain": {
-          "normalized_min": 0.0,
-          "normalized_max": 1.0,
-          "visible_unit": "dB",
-          "visible_min": -20.0,
-          "visible_max": 20.0,
+          "normalized_range": [
+            0.0,
+            1.0
+          ],
+          "visible_range_db": [
+            -20.0,
+            20.0
+          ],
           "formula_from_normalized": "dB = 40*x - 20",
           "formula_to_normalized": "x = (dB + 20) / 40",
           "observations": {
@@ -65,9 +67,14 @@
           }
         },
         "mix": {
-          "normalized_min": 0.0,
-          "normalized_max": 1.0,
-          "visible_unit": "%",
+          "normalized_range": [
+            0.0,
+            1.0
+          ],
+          "visible_range_percent": [
+            0.0,
+            100.0
+          ],
           "formula_from_normalized": "percent = 100*x",
           "formula_to_normalized": "x = percent / 100",
           "observations": {
@@ -77,13 +84,24 @@
           }
         }
       },
-      "validated_test": {
+      "validated_generated_test": {
         "threshold": 0.5,
         "compression": 0.5,
         "output_gain": 0.75,
-        "output_gain_visible_dB": 10.0,
+        "output_gain_db": 10.0,
         "mix": 0.25,
-        "result": "Successfully loaded in Logic Pro; all four controls appeared at the expected positions."
+        "result": "Successfully loaded in Logic Pro; all four controls displayed as expected."
+      },
+      "reference_template": {
+        "path": "reference/UADx_dbx160_reference.cst",
+        "known_values": {
+          "threshold_normalized": 0.5,
+          "compression_normalized": 0.5,
+          "compression_visible": 4,
+          "output_gain_db": 0.0,
+          "mix_percent": 100.0
+        },
+        "intended_use": "Canonical minimal dbx-only CST template for future automated edits."
       }
     }
   }
